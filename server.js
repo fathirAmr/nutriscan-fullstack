@@ -189,7 +189,7 @@ app.get('/api/history', async (req, res) => {
 
 // Serve React frontend for all other routes (client-side routing)
 // IMPORTANT: This must be AFTER all API routes
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
