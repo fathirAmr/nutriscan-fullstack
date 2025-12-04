@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./db');
 require('dotenv').config();
 
@@ -10,8 +11,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Test route
-app.get('/', (req, res) => {
+// Serve static files from Vite build (dist folder)
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// API Routes
+app.get('/api', (req, res) => {
   res.json({ message: 'NutriScan API Running!' });
 });
 
@@ -31,7 +35,6 @@ app.get('/api/products/barcode/:barcode', async (req, res) => {
   try {
     const { barcode } = req.params;
     
-    // Get product
     const [products] = await db.query(
       'SELECT * FROM products WHERE barcode = ?',
       [barcode]
@@ -43,31 +46,26 @@ app.get('/api/products/barcode/:barcode', async (req, res) => {
     
     const product = products[0];
     
-    // Get nutrition
     const [nutrition] = await db.query(
       'SELECT * FROM nutrition WHERE product_id = ?',
       [product.id]
     );
     
-    // Get ingredients
     const [ingredients] = await db.query(
       'SELECT ingredient FROM ingredients WHERE product_id = ?',
       [product.id]
     );
     
-    // Get allergens
     const [allergens] = await db.query(
       'SELECT allergen FROM allergens WHERE product_id = ?',
       [product.id]
     );
     
-    // Get additives
     const [additives] = await db.query(
       'SELECT additive FROM additives WHERE product_id = ?',
       [product.id]
     );
     
-    // Combine data
     const result = {
       ...product,
       nutrition: nutrition[0] || null,
@@ -105,7 +103,6 @@ app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Get product
     const [products] = await db.query(
       'SELECT * FROM products WHERE id = ?',
       [id]
@@ -117,7 +114,6 @@ app.get('/api/products/:id', async (req, res) => {
     
     const product = products[0];
     
-    // Get related data
     const [nutrition] = await db.query(
       'SELECT * FROM nutrition WHERE product_id = ?',
       [id]
@@ -191,7 +187,15 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
+// Serve React frontend for all other routes (client-side routing)
+// IMPORTANT: This must be AFTER all API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 // Start server
-app.listen(PORT, '0.0.0.0',() => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ Serving frontend from /dist`);
+  console.log(`✓ API available at /api/*`);
 });
