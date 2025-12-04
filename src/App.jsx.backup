@@ -1,0 +1,439 @@
+import React, { useState } from 'react';
+import { Camera, Search, Clock, AlertCircle, CheckCircle, XCircle, TrendingUp, Award, ThumbsUp, ThumbsDown, Info, List } from 'lucide-react';
+import BarcodeScanner from './components/BarcodeScanner';
+
+// Database 10 produk barcode + 10 makanan Indonesia
+const productsDB = {
+  '8991002001015': { name: 'Indomie Goreng', brand: 'Indofood', category: 'Mie Instan', image: '🍜', nutrition: { servingSize: '85g', calories: 390, protein: 8.5, carbs: 58, fat: 14, sugar: 4, sodium: 1090, fiber: 2 }, ingredients: ['Tepung terigu', 'Minyak sawit', 'Garam', 'Bumbu'], allergens: ['Gluten', 'MSG'], additives: ['Pewarna', 'Pengawet'], healthScore: 'D', hasBarcode: true },
+  '8992753201015': { name: 'Teh Botol Sosro', brand: 'Sosro', category: 'Minuman', image: '🍵', nutrition: { servingSize: '200ml', calories: 90, protein: 0, carbs: 22, fat: 0, sugar: 20, sodium: 10, fiber: 0 }, ingredients: ['Air', 'Gula', 'Ekstrak teh'], allergens: [], additives: ['Antioksidan'], healthScore: 'C', hasBarcode: true },
+  '8992802086783': { name: 'Ultra Milk Cokelat', brand: 'Ultra', category: 'Susu', image: '🥛', nutrition: { servingSize: '200ml', calories: 130, protein: 6, carbs: 20, fat: 3, sugar: 18, sodium: 80, fiber: 1 }, ingredients: ['Susu segar', 'Gula', 'Kakao'], allergens: ['Laktosa'], additives: ['Stabilizer'], healthScore: 'B', hasBarcode: true },
+  '8991906201015': { name: 'Aqua Botol 600ml', brand: 'Aqua', category: 'Air Mineral', image: '💧', nutrition: { servingSize: '600ml', calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, sodium: 5, fiber: 0 }, ingredients: ['Air mineral'], allergens: [], additives: [], healthScore: 'A', hasBarcode: true },
+  '8992741301015': { name: 'Oreo Original', brand: 'Mondelez', category: 'Biskuit', image: '🍪', nutrition: { servingSize: '34g', calories: 160, protein: 2, carbs: 23, fat: 7, sugar: 14, sodium: 135, fiber: 1 }, ingredients: ['Tepung', 'Gula', 'Kakao'], allergens: ['Gluten', 'Susu'], additives: ['Pengembang', 'Perisa'], healthScore: 'D', hasBarcode: true },
+  '8992760221011': { name: 'Chitato Sapi Panggang', brand: 'Indofood', category: 'Snack', image: '🥔', nutrition: { servingSize: '68g', calories: 340, protein: 4, carbs: 38, fat: 19, sugar: 3, sodium: 420, fiber: 3 }, ingredients: ['Kentang', 'Minyak sawit', 'Bumbu'], allergens: ['MSG'], additives: ['Pewarna'], healthScore: 'D', hasBarcode: true },
+  '8996001600047': { name: 'Pocari Sweat', brand: 'Otsuka', category: 'Minuman Isotonik', image: '⚡', nutrition: { servingSize: '330ml', calories: 100, protein: 0, carbs: 25, fat: 0, sugar: 24, sodium: 165, fiber: 0 }, ingredients: ['Air', 'Gula', 'Natrium'], allergens: [], additives: ['Perisa'], healthScore: 'C', hasBarcode: true },
+  '8992802085014': { name: 'Yakult Original', brand: 'Yakult', category: 'Probiotik', image: '🥤', nutrition: { servingSize: '65ml', calories: 50, protein: 0.8, carbs: 11, fat: 0, sugar: 10, sodium: 15, fiber: 0 }, ingredients: ['Air', 'Gula', 'Susu skim', 'Probiotik'], allergens: ['Laktosa'], additives: [], healthScore: 'B', hasBarcode: true },
+  '8886467101014': { name: 'SilverQueen Chunky Bar', brand: 'SilverQueen', category: 'Cokelat', image: '🍫', nutrition: { servingSize: '100g', calories: 530, protein: 7, carbs: 58, fat: 29, sugar: 52, sodium: 45, fiber: 3 }, ingredients: ['Gula', 'Susu', 'Kakao', 'Kacang'], allergens: ['Susu', 'Kacang'], additives: ['Lesitin'], healthScore: 'E', hasBarcode: true },
+  '8992388101015': { name: 'Good Time Cookies', brand: 'Arnott', category: 'Biskuit', image: '🍪', nutrition: { servingSize: '38g', calories: 180, protein: 2, carbs: 25, fat: 8, sugar: 12, sodium: 110, fiber: 1 }, ingredients: ['Tepung', 'Gula', 'Cokelat chip'], allergens: ['Gluten', 'Susu'], additives: ['Pengembang'], healthScore: 'D', hasBarcode: true },
+  'nasi-goreng': { name: 'Nasi Goreng', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🍳', nutrition: { servingSize: '1 porsi (300g)', calories: 450, protein: 12, carbs: 65, fat: 15, sugar: 3, sodium: 800, fiber: 2 }, ingredients: ['Nasi', 'Telur', 'Sayuran', 'Kecap'], allergens: ['Telur', 'Kedelai'], additives: ['MSG (mungkin)'], healthScore: 'C', hasBarcode: false },
+  'mie-ayam': { name: 'Mie Ayam', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🍜', nutrition: { servingSize: '1 mangkok (350g)', calories: 420, protein: 15, carbs: 55, fat: 12, sugar: 2, sodium: 950, fiber: 3 }, ingredients: ['Mie', 'Ayam', 'Kaldu', 'Sayuran'], allergens: ['Gluten'], additives: ['MSG (mungkin)'], healthScore: 'C', hasBarcode: false },
+  'nasi-uduk': { name: 'Nasi Uduk', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🍚', nutrition: { servingSize: '1 porsi (250g)', calories: 380, protein: 10, carbs: 58, fat: 12, sugar: 2, sodium: 600, fiber: 2 }, ingredients: ['Nasi', 'Santan', 'Serai', 'Lauk'], allergens: ['Kedelai'], additives: [], healthScore: 'C', hasBarcode: false },
+  'gado-gado': { name: 'Gado-Gado', brand: 'Makanan Indonesia', category: 'Makanan Sehat', image: '🥗', nutrition: { servingSize: '1 porsi (300g)', calories: 320, protein: 12, carbs: 35, fat: 14, sugar: 8, sodium: 450, fiber: 6 }, ingredients: ['Sayuran', 'Tahu', 'Tempe', 'Bumbu kacang'], allergens: ['Kacang', 'Telur'], additives: [], healthScore: 'B', hasBarcode: false },
+  'soto-ayam': { name: 'Soto Ayam', brand: 'Makanan Indonesia', category: 'Makanan Berkuah', image: '🍲', nutrition: { servingSize: '1 mangkok (400g)', calories: 280, protein: 18, carbs: 32, fat: 8, sugar: 2, sodium: 850, fiber: 2 }, ingredients: ['Ayam', 'Kuah kaldu', 'Nasi', 'Sayuran'], allergens: [], additives: ['MSG (mungkin)'], healthScore: 'B', hasBarcode: false },
+  'bakso': { name: 'Bakso', brand: 'Makanan Indonesia', category: 'Makanan Berkuah', image: '🍲', nutrition: { servingSize: '1 mangkok (400g)', calories: 380, protein: 18, carbs: 45, fat: 12, sugar: 2, sodium: 1100, fiber: 2 }, ingredients: ['Daging sapi', 'Tepung', 'Mie', 'Kaldu'], allergens: ['Gluten'], additives: ['MSG', 'Boraks (HINDARI!)'], healthScore: 'C', hasBarcode: false },
+  'pisang-goreng': { name: 'Pisang Goreng', brand: 'Makanan Indonesia', category: 'Gorengan', image: '🍌', nutrition: { servingSize: '1 buah (100g)', calories: 180, protein: 2, carbs: 28, fat: 8, sugar: 12, sodium: 50, fiber: 2 }, ingredients: ['Pisang', 'Tepung', 'Gula', 'Minyak'], allergens: ['Gluten'], additives: [], healthScore: 'D', hasBarcode: false },
+  'rendang': { name: 'Rendang Daging', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🍖', nutrition: { servingSize: '1 porsi (150g)', calories: 420, protein: 25, carbs: 8, fat: 32, sugar: 4, sodium: 650, fiber: 2 }, ingredients: ['Daging sapi', 'Santan', 'Cabai', 'Rempah'], allergens: [], additives: [], healthScore: 'C', hasBarcode: false },
+  'nasi-padang': { name: 'Nasi Padang', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🍛', nutrition: { servingSize: '1 porsi (400g)', calories: 650, protein: 22, carbs: 75, fat: 28, sugar: 5, sodium: 1200, fiber: 4 }, ingredients: ['Nasi', 'Rendang', 'Gulai', 'Sambal'], allergens: [], additives: ['MSG (mungkin)'], healthScore: 'D', hasBarcode: false },
+  'pecel-lele': { name: 'Pecel Lele', brand: 'Makanan Indonesia', category: 'Makanan Berat', image: '🐟', nutrition: { servingSize: '1 porsi (250g)', calories: 380, protein: 20, carbs: 42, fat: 16, sugar: 3, sodium: 720, fiber: 3 }, ingredients: ['Lele goreng', 'Nasi', 'Sambal', 'Lalapan'], allergens: [], additives: [], healthScore: 'C', hasBarcode: false }
+};
+
+const NutriScan = () => {
+  const [activeTab, setActiveTab] = useState('scan');
+  const [scanMode, setScanMode] = useState('search');
+  const [barcode, setBarcode] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [product, setProduct] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [scanning, setScanning] = useState(false);
+  const [expandedNutrient, setExpandedNutrient] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+
+  const handleScan = () => {
+    if (!barcode.trim()) return;
+    setScanning(true);
+    setTimeout(() => {
+      const found = productsDB[barcode];
+      setProduct(found ? found : { notFound: true });
+      if (found) addToHistory(barcode, found);
+      setScanning(false);
+    }, 800);
+  };
+
+  const handleBarcodeDetected = (detectedBarcode) => {
+    console.log('Barcode detected:', detectedBarcode);
+    setBarcode(detectedBarcode);
+    setShowScanner(false);
+    setScanMode('manual');
+    
+    setScanning(true);
+    setTimeout(() => {
+      const found = productsDB[detectedBarcode];
+      setProduct(found ? found : { notFound: true });
+      if (found) addToHistory(detectedBarcode, found);
+      setScanning(false);
+    }, 500);
+  };
+
+  const handleSearch = (query) => {
+    const q = query || searchQuery;
+    if (!q.trim()) return;
+    setScanning(true);
+    setTimeout(() => {
+      const results = Object.entries(productsDB).filter(([k, p]) => 
+        p.name.toLowerCase().includes(q.toLowerCase()) ||
+        p.brand.toLowerCase().includes(q.toLowerCase())
+      );
+      if (results.length > 0) {
+        const [key, found] = results[0];
+        setProduct(found);
+        addToHistory(key, found);
+      } else {
+        setProduct({ notFound: true });
+      }
+      setScanning(false);
+    }, 500);
+  };
+
+  const selectProduct = (key, prod) => {
+    setProduct(prod);
+    addToHistory(key, prod);
+    setSearchQuery('');
+  };
+
+  const addToHistory = (key, found) => {
+    setHistory(prev => [{ key, product: found, date: new Date() }, ...prev].slice(0, 10));
+  };
+
+  const getScoreColor = (score) => ({ 'A': 'bg-green-500', 'B': 'bg-blue-500', 'C': 'bg-yellow-500', 'D': 'bg-orange-500', 'E': 'bg-red-500' }[score] || 'bg-gray-500');
+  const getScoreText = (score) => ({ 'A': 'Sangat Baik', 'B': 'Baik', 'C': 'Cukup', 'D': 'Kurang Baik', 'E': 'Tidak Baik' }[score] || 'Unknown');
+
+  const getHealthWarnings = (n) => {
+    const w = [];
+    if (n.sugar > 15) w.push({ type: 'warning', text: 'Tinggi Gula', icon: AlertCircle });
+    if (n.sodium > 400) w.push({ type: 'warning', text: 'Tinggi Sodium', icon: AlertCircle });
+    if (n.fat > 15) w.push({ type: 'warning', text: 'Tinggi Lemak', icon: AlertCircle });
+    if (n.calories < 150 && n.sugar < 10) w.push({ type: 'good', text: 'Rendah Kalori', icon: CheckCircle });
+    if (n.fiber > 5) w.push({ type: 'good', text: 'Tinggi Serat', icon: CheckCircle });
+    return w;
+  };
+
+  const getNutritionImpact = (nutrient, value) => {
+    const impacts = {
+      calories: { positive: ['Memberikan energi', 'Mendukung fungsi tubuh'], negative: value > 300 ? ['Risiko kenaikan berat badan', 'Dapat memicu diabetes'] : [] },
+      protein: { positive: value > 5 ? ['Membangun otot', 'Meningkatkan imun', 'Penting untuk pertumbuhan'] : [], negative: value < 3 ? ['Protein sangat rendah'] : [] },
+      carbs: { positive: ['Sumber energi untuk otak'], negative: value > 50 ? ['Karbohidrat sangat tinggi', 'Lonjakan gula darah'] : [] },
+      fat: { positive: value > 3 && value < 15 ? ['Membantu penyerapan vitamin', 'Mendukung otak'] : [], negative: value > 15 ? ['Lemak sangat tinggi', 'Risiko kolesterol', 'Jerawat'] : [] },
+      sugar: { positive: value < 5 ? ['Energi cepat'] : [], negative: value > 15 ? ['Gula sangat tinggi', 'Risiko diabetes', 'Merusak gigi'] : value > 10 ? ['Gula cukup tinggi'] : [] },
+      sodium: { positive: value > 50 && value < 200 ? ['Keseimbangan cairan'] : [], negative: value > 400 ? ['Sodium sangat tinggi', 'Risiko hipertensi', 'Bengkak'] : [] },
+      fiber: { positive: value > 3 ? ['Bantu pencernaan', 'Kenyang lama', 'Turunkan kolesterol'] : [], negative: value < 2 ? ['Serat sangat rendah'] : [] }
+    };
+    return impacts[nutrient] || { positive: [], negative: [] };
+  };
+
+  const NutritionItem = ({ label, value, impact }) => {
+    const isExpanded = expandedNutrient === label;
+    const hasInfo = impact.positive.length > 0 || impact.negative.length > 0;
+
+    return (
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <button onClick={() => setExpandedNutrient(isExpanded ? null : label)} className="w-full flex justify-between items-center p-3 hover:bg-gray-100">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 font-medium">{label}</span>
+            {hasInfo && <Info size={16} className="text-blue-500" />}
+          </div>
+          <span className="font-bold text-lg">{value}</span>
+        </button>
+        
+        {isExpanded && hasInfo && (
+          <div className="border-t bg-white p-4 space-y-3">
+            {impact.positive.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <ThumbsUp size={18} className="text-green-600" />
+                  <span className="font-semibold text-green-800">Dampak Positif:</span>
+                </div>
+                <ul className="space-y-1 ml-7">
+                  {impact.positive.map((item, i) => (
+                    <li key={i} className="text-sm text-green-700 flex gap-2">
+                      <span className="text-green-500">✓</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {impact.negative.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <ThumbsDown size={18} className="text-red-600" />
+                  <span className="font-semibold text-red-800">Dampak Negatif:</span>
+                </div>
+                <ul className="space-y-1 ml-7">
+                  {impact.negative.map((item, i) => (
+                    <li key={i} className="text-sm text-red-700 flex gap-2">
+                      <span className="text-red-500">✗</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="text-3xl">🥗</div>
+              <div>
+                <h1 className="text-2xl font-bold text-green-600">NutriScan</h1>
+                <p className="text-xs text-gray-500">Cek Nutrisi Makananmu</p>
+              </div>
+            </div>
+            <Award className="text-green-500" size={32} />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border-b">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex gap-4">
+            {['scan', 'history'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`flex items-center gap-2 py-3 px-4 border-b-2 transition-colors ${activeTab === tab ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'}`}>
+                {tab === 'scan' ? <Camera size={20} /> : <Clock size={20} />}
+                <span className="font-medium">{tab === 'scan' ? 'Scan' : 'Riwayat'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {activeTab === 'scan' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold mb-4">Pilih Metode Pencarian</h2>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => {
+                    setScanMode('camera');
+                    setShowScanner(true);
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    scanMode === 'camera' ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                  }`}
+                >
+                  <Camera className={`mx-auto mb-2 ${scanMode === 'camera' ? 'text-green-600' : 'text-gray-400'}`} size={32} />
+                  <p className={`text-sm font-medium ${scanMode === 'camera' ? 'text-green-600' : 'text-gray-600'}`}>Scan Kamera</p>
+                </button>
+                
+                <button
+                  onClick={() => setScanMode('manual')}
+                  className={`p-4 rounded-lg border-2 transition-all ${scanMode === 'manual' ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                  }`}
+                >
+                  <Search className={`mx-auto mb-2 ${scanMode === 'manual' ? 'text-green-600' : 'text-gray-400'}`} size={32} />
+                  <p className={`text-sm font-medium ${scanMode === 'manual' ? 'text-green-600' : 'text-gray-600'}`}>Input Barcode</p>
+                </button>
+                
+                <button
+                  onClick={() => setScanMode('search')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    scanMode === 'search' ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                  }`}
+                >
+                  <List className={`mx-auto mb-2 ${scanMode === 'search' ? 'text-green-600' : 'text-gray-400'}`} size={32} />
+                  <p className={`text-sm font-medium ${scanMode === 'search' ? 'text-green-600' : 'text-gray-600'}`}>Cari Produk</p>
+                </button>
+              </div>
+            </div>
+
+            {scanMode === 'manual' && (
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Search className="text-green-500" />
+                  Input Barcode Manual
+                </h2>
+                
+                <div className="flex gap-2 mb-4">
+                  <input type="text" value={barcode} onChange={(e) => setBarcode(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleScan()} placeholder="Masukkan barcode (contoh: 8991002001015)" className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
+                  <button onClick={handleScan} disabled={scanning} className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50">
+                    {scanning ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Search size={20} />}
+                    {scanning ? 'Scanning...' : 'Scan'}
+                  </button>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-sm font-medium text-blue-900 mb-2">Coba barcode produk ini:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(productsDB).filter(([k, p]) => p.hasBarcode).slice(0, 5).map(([code]) => (
+                      <button key={code} onClick={() => setBarcode(code)} className="text-xs bg-white px-3 py-1 rounded-full border border-blue-200 hover:bg-blue-100">{code}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {scanMode === 'search' && (
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <List className="text-green-500" />
+                  Cari atau Pilih Produk
+                </h2>
+                
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()} placeholder="Cari nama produk..." className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 mb-4" />
+
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {Object.entries(productsDB).filter(([k, p]) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(([key, prod]) => (
+                    <button key={key} onClick={() => selectProduct(key, prod)} className="w-full flex items-center gap-4 p-4 border rounded-lg hover:bg-green-50 transition-colors">
+                      <div className="text-4xl">{prod.image}</div>
+                      <div className="flex-1 text-left">
+                        <h3 className="font-bold">{prod.name}</h3>
+                        <p className="text-sm text-gray-600">{prod.brand} • {prod.category}</p>
+                      </div>
+                      <div className={`w-12 h-12 ${getScoreColor(prod.healthScore)} rounded-full flex items-center justify-center text-white font-bold text-xl`}>
+                        {prod.healthScore}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {product && !product.notFound && (
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="text-6xl">{product.image}</div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold">{product.name}</h3>
+                    <p className="text-gray-600">{product.brand}</p>
+                    <span className="inline-block mt-2 px-3 py-1 bg-gray-100 rounded-full text-sm">{product.category}</span>
+                  </div>
+                  <div className="text-center">
+                    <div className={`w-20 h-20 ${getScoreColor(product.healthScore)} rounded-full flex items-center justify-center text-white mb-2`}>
+                      <span className="text-3xl font-bold">{product.healthScore}</span>
+                    </div>
+                    <p className="text-sm font-medium">{getScoreText(product.healthScore)}</p>
+                  </div>
+                </div>
+
+                <div className="mb-6 space-y-2">
+                  {getHealthWarnings(product.nutrition).map((w, i) => (
+                    <div key={i} className={`flex items-center gap-2 p-3 rounded-lg ${w.type === 'warning' ? 'bg-orange-50 text-orange-800' : 'bg-green-50 text-green-800'}`}>
+                      <w.icon size={20} />
+                      <span className="font-medium">{w.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-6">
+                  <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <TrendingUp className="text-green-500" />
+                    Informasi Nilai Gizi
+                  </h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">Per {product.nutrition.servingSize}</p>
+                    <div className="space-y-3">
+                      {[
+                        ['Kalori', `${product.nutrition.calories} kkal`, 'calories'],
+                        ['Protein', `${product.nutrition.protein}g`, 'protein'],
+                        ['Karbohidrat', `${product.nutrition.carbs}g`, 'carbs'],
+                        ['Lemak', `${product.nutrition.fat}g`, 'fat'],
+                        ['Gula', `${product.nutrition.sugar}g`, 'sugar'],
+                        ['Sodium', `${product.nutrition.sodium}mg`, 'sodium'],
+                        ['Serat', `${product.nutrition.fiber}g`, 'fiber']
+                      ].map(([label, value, key]) => (
+                        <NutritionItem key={key} label={label} value={value} impact={getNutritionImpact(key, product.nutrition[key])} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h4 className="font-bold text-lg mb-3">Komposisi</h4>
+                  <p className="text-gray-700">{product.ingredients.join(', ')}</p>
+                </div>
+
+                {product.allergens.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-bold text-lg mb-3 text-red-600 flex items-center gap-2">
+                      <AlertCircle size={20} />
+                      Mengandung Alergen
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {product.allergens.map((a, i) => (
+                        <span key={i} className="px-3 py-1 bg-red-50 text-red-700 rounded-full text-sm font-medium">{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {product.additives.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-lg mb-3">Bahan Tambahan</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {product.additives.map((a, i) => (
+                        <span key={i} className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm">{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {product && product.notFound && (
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="text-center py-12">
+                  <XCircle size={64} className="mx-auto text-red-500 mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Produk Tidak Ditemukan</h3>
+                  <p className="text-gray-600">Produk tidak ada di database kami.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Clock className="text-green-500" />
+              Riwayat Scan
+            </h2>
+            
+            {history.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock size={64} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">Belum ada riwayat scan</p>
+                <p className="text-sm text-gray-400 mt-2">Scan produk pertamamu sekarang!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item, idx) => (
+                  <div key={idx} onClick={() => { setProduct(item.product); setActiveTab('scan'); }} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <div className="text-4xl">{item.product.image}</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold">{item.product.name}</h3>
+                      <p className="text-sm text-gray-600">{item.product.brand}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {item.date.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className={`w-12 h-12 ${getScoreColor(item.product.healthScore)} rounded-full flex items-center justify-center text-white`}>
+                      <span className="text-xl font-bold">{item.product.healthScore}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Scanner Modal */}
+      {showScanner && (
+        <BarcodeScanner
+          onScanSuccess={handleBarcodeDetected}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default NutriScan;
